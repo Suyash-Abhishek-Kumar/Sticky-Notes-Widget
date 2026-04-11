@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Data (optional - keep or remove based on preference)
+data/notes.json
+
+# Virtual environment
+venv/
