@@ -75,6 +75,51 @@ dist/StickyNotes/StickyNotes.exe
 ```
 
 ---
+## Run on Startup
+
+To ensure the app launches automatically when Windows starts, use **Task Scheduler**.
+
+---
+
+### Steps
+
+1. Press:
+
+```
+Win + R
+```
+
+2. Type:
+
+```
+taskschd.msc
+```
+
+3. Click **Create Basic Task…**
+
+4. Name:
+
+```
+Sticky Notes Startup
+```
+
+5. Trigger:
+
+* Select **When I log on**
+
+6. Action:
+
+* Select **Start a program**
+
+7. Browse and select:
+
+```
+dist/StickyNotes/StickyNotes.exe
+```
+
+8. Finish setup
+
+---
 
 ## Project Structure
 
