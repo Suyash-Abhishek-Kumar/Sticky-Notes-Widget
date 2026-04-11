@@ -53,7 +53,7 @@ StickyNotes.exe
 #### Steps
 
 ```bash
-git clone https://github.com/Suyash-Abhishek-Kumar/Stiky-Notes-Widget.git
+git clone https://github.com/Suyash-Abhishek-Kumar/Sticky-Notes-Widget.git
 cd sticky-notes-app
 python main.py
 ```
