@@ -8,13 +8,29 @@ This app provides fast, persistent, and customizable sticky notes that behave li
 
 ## Features
 
+### Core
+
 * Multiple independent notes
 * Click-to-edit with Shift+Enter for new lines
 * Drag and reposition notes
 * Auto-save (no manual saving required)
 * Pin / unpin notes (always-on-top support)
+
+### Productivity
+
+* Collapse notes into compact header view
+* Smart snapping between notes for alignment
 * 5 color themes for categorization
+
+### UX Enhancements
+
 * Auto-resizing notes based on content
+* Smooth drag behavior with snap locking
+* Rounded edges for a cleaner UI
+* Desktop-style behavior (stays out of the way when working)
+
+### System
+
 * Runs on Windows startup
 * Packaged as standalone `.exe` (no Python required)
 
@@ -22,10 +38,12 @@ This app provides fast, persistent, and customizable sticky notes that behave li
 
 ## Demo / Preview
 
-<img src="https://github.com/user-attachments/assets/a285ff6f-859c-4628-8bb0-96512883d702" height="200" />
-<img src="https://github.com/user-attachments/assets/5279f206-1a40-4300-ad83-ccb19ae7364a" height="200" />
-
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/93c082ea-5d4e-4aed-8554-1215b8485665" height="200" />
+  <img src="https://github.com/user-attachments/assets/50bf83e8-f004-4648-9201-74c92d79853c" height="200" />
+  <br>
+  <img src="https://github.com/user-attachments/assets/463fbe0b-fa27-4fd8-a5e2-28ae8640592f" height="200" />
+</p>
 
 ---
 
@@ -53,8 +71,8 @@ StickyNotes.exe
 #### Steps
 
 ```bash
-git clone https://github.com/Suyash-Abhishek-Kumar/Sticky-Notes-Widget.git
-cd sticky-notes-app
+git clone https://github.com/Suyash-Abhishek-Kumar/Stiky-Notes-Widget.git
+cd Stiky-Notes-Widget
 python main.py
 ```
 
@@ -75,43 +93,20 @@ dist/StickyNotes/StickyNotes.exe
 ```
 
 ---
+
 ## Run on Startup
 
 To ensure the app launches automatically when Windows starts, use **Task Scheduler**.
 
----
-
 ### Steps
 
-1. Press:
-
-```
-Win + R
-```
-
-2. Type:
-
-```
-taskschd.msc
-```
-
+1. Press `Win + R`
+2. Type `taskschd.msc`
 3. Click **Create Basic Task…**
-
-4. Name:
-
-```
-Sticky Notes Startup
-```
-
-5. Trigger:
-
-* Select **When I log on**
-
-6. Action:
-
-* Select **Start a program**
-
-7. Browse and select:
+4. Name it `Sticky Notes Startup`
+5. Trigger → **When I log on**
+6. Action → **Start a program**
+7. Select:
 
 ```
 dist/StickyNotes/StickyNotes.exe
@@ -121,25 +116,16 @@ dist/StickyNotes/StickyNotes.exe
 
 ---
 
-## Project Structure
-
-```text
-.
-├── main.py          # App entry point
-├── ui_note.py       # UI logic
-├── note.py          # Note data model
-├── storage.py       # Save/load logic
-├── data/            # Notes JSON storage
-```
-
----
-
 ## Usage
 
-* **Left click** → Edit note
+* **Click note** → Edit
+
 * **Enter** → Save
+
 * **Shift + Enter** → New line
-* **Drag top bar** → Move note
+
+* **Drag header** → Move note
+
 * **Right click** →
 
   * New note
@@ -147,12 +133,29 @@ dist/StickyNotes/StickyNotes.exe
   * Change color
   * Pin / Unpin
 
+* **Collapse button (– / +)** → Toggle compact mode
+
+* **Drag near another note** → Snap into alignment
+
+---
+
+## Project Structure
+
+```text
+.
+├── main.py
+├── ui_note.py
+├── note.py
+├── storage.py
+├── data/
+```
+
 ---
 
 ## Known Limitations
 
 * Built using Tkinter (limited native styling)
-* Unpinned notes use Z-order tricks (not true desktop layer)
+* Desktop behavior is simulated using Z-order (not true widget layer)
 * Windows-only (uses Win32 APIs)
 
 ---
@@ -160,9 +163,8 @@ dist/StickyNotes/StickyNotes.exe
 ## Roadmap
 
 * System tray support
-* True desktop widget mode (WorkerW)
-* Snap-to-edge behavior
-* Opacity control per note
+* Improved snap alignment (grid / spacing)
+* Optional opacity control
 
 ---
 
