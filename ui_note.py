@@ -122,6 +122,27 @@ class NoteWindow:
             self._window.attributes("-topmost", True)
         else:
             self._window.attributes("-topmost", False)
+        
+    def _apply_rounded_corners(self):
+        """Apply Windows 11 perfectly smooth hardware-accelerated rounded corners."""
+        self._window.update_idletasks()
+        try:
+            hwnd = int(self._window.wm_frame(), 16)
+        except:
+            hwnd = self._window.winfo_id()
+            
+        # Ensure any old jagged GDI regions are destroyed
+        ctypes.windll.user32.SetWindowRgn(hwnd, 0, True)
+        
+        try:
+            # Force DWM native anti-aliased corners (Windows 11)
+            DWMWA_WINDOW_CORNER_PREFERENCE = 33
+            DWMWCP_ROUND = 2
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ctypes.byref(ctypes.c_int(DWMWCP_ROUND)), 4
+            )
+        except:
+            pass
 
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -373,6 +394,7 @@ class NoteWindow:
         
         # Apply strict new geometry mapping
         self._window.geometry(f"{NOTE_WIDTH}x{final_height}+{self._note.x}+{self._note.y}")
+        self._apply_rounded_corners()
 
     # ── Event handlers ────────────────────────────────────────────────────────
 
