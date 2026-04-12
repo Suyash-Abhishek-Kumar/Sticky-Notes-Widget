@@ -15,7 +15,8 @@ class Note:
 
     def __init__(self, note_id: int, text: str = None, x: int = None, y: int = None, 
                  pinned: bool = False, bg_color: str = "#FFF8B0", 
-                 top_bar_color: str = "#F2DC7D", text_color: str = "#2B2B2B"):
+                 top_bar_color: str = "#F2DC7D", text_color: str = "#2B2B2B",
+                 collapsed: bool = False):
         self.id = note_id
         self.text = text if text is not None else self.DEFAULT_TEXT
         self.x = x if x is not None else self.DEFAULT_X
@@ -24,6 +25,7 @@ class Note:
         self.bg_color = bg_color
         self.top_bar_color = top_bar_color
         self.text_color = text_color
+        self.collapsed = collapsed
 
     def update_position(self, x: int, y: int):
         """Update the note's on-screen position."""
@@ -50,7 +52,8 @@ class Note:
             "pinned": self.pinned,
             "bg_color": self.bg_color,
             "top_bar_color": self.top_bar_color,
-            "text_color": self.text_color
+            "text_color": self.text_color,
+            "collapsed": self.collapsed
         }
 
     @classmethod
@@ -65,4 +68,5 @@ class Note:
             bg_color=data.get("bg_color", "#FFF8B0"),
             top_bar_color=data.get("top_bar_color", "#F2DC7D"),
             text_color=data.get("text_color", "#2B2B2B"),
+            collapsed=data.get("collapsed", False),
         )

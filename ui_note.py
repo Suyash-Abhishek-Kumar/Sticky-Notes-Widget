@@ -68,6 +68,8 @@ class NoteWindow:
         # Drag state — tracks mouse offset from window origin
         self._drag_start_x = 0
         self._drag_start_y = 0
+        self._snap_lock_x = None
+        self._snap_lock_y = None
 
         # Debounce save-on-drag: hold the pending after() id
         self._drag_save_job = None
@@ -81,9 +83,14 @@ class NoteWindow:
         
         # Load text silently into textbox to measure bounds before rendering
         self._textbox.insert("1.0", self._note.text)
-        self._adjust_height()
         
-        self._show_display_mode()
+        # Apply initial state formatting cleanly avoiding jarring resizes
+        if self._note.collapsed:
+            self._apply_collapse_state()
+            self._show_display_mode()
+        else:
+            self._show_display_mode()
+            self._adjust_height()
 
     # ── Window setup ──────────────────────────────────────────────────────────
 
@@ -135,18 +142,27 @@ class NoteWindow:
         self._top_bar.pack(fill="x", side="top")
         self._top_bar.pack_propagate(False) # Keep strict height
 
-        # "✕" close button inside the top bar
-        self._close_btn = tk.Label(
+        # Toggle collapse/expand button inside the top bar
+        self._toggle_btn = tk.Label(
             self._top_bar,
-            text="✕",
-            fg="#666",
+            text="+" if self._note.collapsed else "–",
             font=("Segoe UI", 10, "bold"),
             cursor="hand2",
             padx=6,
             pady=2
         )
-        self._close_btn.pack(side="right")
-        self._close_btn.bind("<Button-1>", lambda e: self._on_close())
+        self._toggle_btn.pack(side="right")
+        self._toggle_btn.bind("<Button-1>", lambda e: self._cmd_toggle_collapse())
+        
+        # Header text preview visible during collapsed modes natively
+        self._preview_label = tk.Label(
+            self._top_bar,
+            text="",
+            font=("Segoe UI", 9, "bold"),
+            cursor="fleur",
+            padx=6
+        )
+        self._preview_label.pack(side="left")
 
         # Main content frame (fills remaining space)
         self._content_frame = tk.Frame(self._outer_frame)
@@ -189,18 +205,27 @@ class NoteWindow:
         self._window.configure(bg=bg)
         self._outer_frame.configure(bg=bg)
         self._top_bar.configure(bg=top)
-        self._close_btn.configure(bg=top)
+        self._toggle_btn.configure(bg=top, fg="#666")
+        self._preview_label.configure(bg=top, fg=text)
         self._content_frame.configure(bg=bg)
         self._label.configure(bg=bg, fg=text)
         self._textbox.configure(bg=bg, fg=text, insertbackground=text)
 
         # Update dynamic hover bindings mapping properly cleanly inside lambda
-        self._close_btn.bind("<Enter>", lambda e: self._close_btn.configure(bg="#E81123", fg="white"))
-        self._close_btn.bind("<Leave>", lambda e, c=top: self._close_btn.configure(bg=c, fg="#666"))
+        self._top_bar.bind("<Enter>", lambda e, h=hover: self._set_topbar_color(h))
+        self._top_bar.bind("<Leave>", lambda e, c=top: self._set_topbar_color(c))
 
-        self._top_bar.bind("<Enter>", lambda e, h=hover: self._top_bar.configure(bg=h))
-        self._top_bar.bind("<Leave>", lambda e, c=top: self._top_bar.configure(bg=c))
+        self._preview_label.bind("<Enter>", lambda e, h=hover: self._set_topbar_color(h))
+        self._preview_label.bind("<Leave>", lambda e, c=top: self._set_topbar_color(c))
 
+        self._toggle_btn.bind("<Enter>", lambda e, h=hover: self._set_topbar_color(h))
+        self._toggle_btn.bind("<Leave>", lambda e, c=top: self._set_topbar_color(c))
+
+    def _set_topbar_color(self, color):
+        self._top_bar.configure(bg=color)
+        self._preview_label.configure(bg=color)
+        self._toggle_btn.configure(bg=color)
+        
     def _create_context_menu(self):
         """Create the right-click menu."""
         self._menu = tk.Menu(self._window, tearoff=0)
@@ -231,6 +256,11 @@ class NoteWindow:
         self._top_bar.bind("<ButtonPress-1>", self._on_drag_start)
         self._top_bar.bind("<B1-Motion>", self._on_drag_motion)
         self._top_bar.bind("<ButtonRelease-1>", self._on_drag_end)
+        
+        # Ensure dragging propagates identically across the inner header preview text
+        self._preview_label.bind("<ButtonPress-1>", self._on_drag_start)
+        self._preview_label.bind("<B1-Motion>", self._on_drag_motion)
+        self._preview_label.bind("<ButtonRelease-1>", self._on_drag_end)
 
         # Also allow dragging from the main content area when NOT editing
         self._content_frame.bind("<ButtonPress-1>", self._on_drag_start)
@@ -251,6 +281,7 @@ class NoteWindow:
         self._textbox.bind("<Button-3>", self._show_menu)
         self._top_bar.bind("<Button-3>", self._show_menu)
         self._content_frame.bind("<Button-3>", self._show_menu)
+        self._preview_label.bind("<Button-3>", self._show_menu)
 
     # ── Mode switching ────────────────────────────────────────────────────────
 
@@ -290,9 +321,41 @@ class NoteWindow:
         self._content_frame.unbind("<ButtonRelease-1>")
 
         self._textbox.focus_set()
+        
+    def _apply_collapse_state(self):
+        """Morph UI into a narrow preview strip or expanding back into full canvas."""
+        if self._note.collapsed:
+            # Strip content context entirely
+            self._content_frame.pack_forget()
+            self._toggle_btn.configure(text="+")
+            
+            # Formulate the truncated title line natively scaling it dynamically
+            lines = self._note.text.strip("\n").split('\n')
+            first_line = lines[0].strip() if lines else ""
+            
+            if not first_line:
+                preview = "Empty"
+            elif len(first_line) > 10:
+                preview = first_line[:10] + "..."
+            else:
+                preview = first_line
+                
+            self._preview_label.configure(text=preview)
+            
+            # Compress Height natively avoiding OS flashing: 24px Topbar + 2px Frame Edge
+            self._window.geometry(f"{NOTE_WIDTH}x25+{self._note.x}+{self._note.y}")
+        else:
+            # Expand frame mappings
+            self._toggle_btn.configure(text="–")
+            self._preview_label.configure(text="")
+            self._content_frame.pack(fill="both", expand=True)
+            self._adjust_height()
 
     def _adjust_height(self):
         """Update window geometry dynamically based on inner text lines."""
+        if self._note.collapsed:
+            return  # Height locked safely under collapsed masking states
+            
         end_index = self._textbox.index("end-1c")
         line_count = int(end_index.split('.')[0])
         
@@ -312,6 +375,15 @@ class NoteWindow:
         self._window.geometry(f"{NOTE_WIDTH}x{final_height}+{self._note.x}+{self._note.y}")
 
     # ── Event handlers ────────────────────────────────────────────────────────
+
+    def _cmd_toggle_collapse(self):
+        """Flip collapsed tracker, flush states, format geometry mappings, and save JSON."""
+        if self._is_editing:
+            self._commit_edit()
+            
+        self._note.collapsed = not self._note.collapsed
+        self._apply_collapse_state()
+        self._on_save()
 
     def _on_label_click(self, event):
         """Single click on the note body → enter edit mode."""
@@ -377,14 +449,69 @@ class NoteWindow:
             return
         self._drag_start_x = event.x_root - self._window.winfo_x()
         self._drag_start_y = event.y_root - self._window.winfo_y()
+        self._snap_lock_x = None
+        self._snap_lock_y = None
 
     def _on_drag_motion(self, event):
-        """Move the window to follow the mouse cursor."""
+        """Move the window to follow the mouse cursor with magnetic snapping."""
         if self._is_editing:
             return
 
         new_x = event.x_root - self._drag_start_x
         new_y = event.y_root - self._drag_start_y
+        
+        my_w = self._window.winfo_width()
+        my_h = self._window.winfo_height()
+        
+        SNAP_DIST = 20
+        UNLOCK_DIST = 30
+        x_snap_padding = 2
+        y_snap_padding = 2
+        
+        # 1. Maintain lock if within unlock distance (anti-jitter)
+        if self._snap_lock_x is not None:
+            if abs(new_x - self._snap_lock_x) < UNLOCK_DIST:
+                new_x = self._snap_lock_x
+            else:
+                self._snap_lock_x = None
+                
+        if self._snap_lock_y is not None:
+            if abs(new_y - self._snap_lock_y) < UNLOCK_DIST:
+                new_y = self._snap_lock_y
+            else:
+                self._snap_lock_y = None
+                
+        # 2. Find new snaps if not locked against other active windows
+        if self._snap_lock_x is None or self._snap_lock_y is None:
+            for child in self._window.master.winfo_children():
+                if isinstance(child, tk.Toplevel) and child is not self._window and child.winfo_exists():
+                    other_x = child.winfo_x()
+                    other_y = child.winfo_y()
+                    other_w = child.winfo_width()
+                    other_h = child.winfo_height()
+                    
+                    # Horizontal snapping (disabled if current note is collapsed)
+                    if not self._note.collapsed and self._snap_lock_x is None:
+                        # Left edge -> Other's right edge
+                        if abs(new_x - (other_x + other_w)) < SNAP_DIST:
+                            self._snap_lock_x = other_x + other_w + x_snap_padding
+                            new_x = self._snap_lock_x
+                        # Right edge -> Other's left edge
+                        elif abs((new_x + my_w) - other_x) < SNAP_DIST:
+                            self._snap_lock_x = other_x - my_w - (x_snap_padding + 1)
+                            new_x = self._snap_lock_x
+                            
+                    # Vertical Snapping
+                    if self._snap_lock_y is None:
+                        # Top edge -> Other's bottom edge
+                        if abs(new_y - (other_y + other_h)) < SNAP_DIST:
+                            self._snap_lock_y = other_y + other_h + y_snap_padding
+                            new_y = self._snap_lock_y
+                        # Bottom edge -> Other's top edge
+                        elif abs((new_y + my_h) - other_y) < SNAP_DIST:
+                            self._snap_lock_y = other_y - my_h - y_snap_padding
+                            new_y = self._snap_lock_y
+
         self._window.geometry(f"+{new_x}+{new_y}")
 
         # Debounce: cancel any pending save, schedule a new one
@@ -414,11 +541,3 @@ class NoteWindow:
         # Setting position shouldn't impact pin logic, but updating helps sync
         self._note.update_position(x, y)
         self._on_save()
-
-    # ── Lifecycle ─────────────────────────────────────────────────────────────
-
-    def _on_close(self):
-        """Close button clicked — gracefully delete the note."""
-        if self._is_editing:
-            self._commit_edit()
-        self._cmd_delete_note()
