@@ -25,6 +25,7 @@ NOTE_WIDTH = 250
 NOTE_HEIGHT = 250
 FONT = ("Segoe UI", 11)       # Modern, cleaner typography
 DRAG_DEBOUNCE_MS = 50         # Throttle save calls during dragging
+ALIGN_TOLERANCE = 30
 
 THEMES = {
     "Yellow": {"bg": "#FFF8B0", "top": "#F2DC7D", "text": "#2B2B2B"},
@@ -75,6 +76,8 @@ class NoteWindow:
         self._drag_save_job = None
 
         self._is_editing = False
+        self.allow_snapping = True
+        self.snapping_text = "Disable Snapping"
 
         self._setup_window()
         self._build_ui()
@@ -262,6 +265,8 @@ class NoteWindow:
         self._menu.add_cascade(label="Color", menu=self._color_menu)
         
         self._menu.add_separator()
+        self._menu.add_command(label="Snapping", command=self._toggle_snapping)
+        self._snap_menu_index = self._menu.index("end")
         self._menu.add_command(label="New Note", command=self._cmd_new_note)
         self._menu.add_command(label="Delete Note", command=self._cmd_delete_note)
 
@@ -443,6 +448,14 @@ class NoteWindow:
         self._menu.entryconfigure(0, label=pin_label)
         self._menu.tk_popup(event.x_root, event.y_root)
 
+    def _toggle_snapping(self):
+        self.allow_snapping = not self.allow_snapping
+    
+    def _show_menu(self, event):
+        label = "Disable Snapping" if self.allow_snapping else "Enable Snapping"
+        self._menu.entryconfigure(self._snap_menu_index, label=label)
+        self._menu.tk_popup(event.x_root, event.y_root)
+
     def _cmd_toggle_pin(self):
         """Toggle pinned status."""
         self._note.pinned = not self._note.pinned
@@ -490,49 +503,68 @@ class NoteWindow:
         x_snap_padding = 2
         y_snap_padding = 2
         
-        # 1. Maintain lock if within unlock distance (anti-jitter)
-        if self._snap_lock_x is not None:
-            if abs(new_x - self._snap_lock_x) < UNLOCK_DIST:
-                new_x = self._snap_lock_x
-            else:
-                self._snap_lock_x = None
-                
-        if self._snap_lock_y is not None:
-            if abs(new_y - self._snap_lock_y) < UNLOCK_DIST:
-                new_y = self._snap_lock_y
-            else:
-                self._snap_lock_y = None
-                
-        # 2. Find new snaps if not locked against other active windows
-        if self._snap_lock_x is None or self._snap_lock_y is None:
-            for child in self._window.master.winfo_children():
-                if isinstance(child, tk.Toplevel) and child is not self._window and child.winfo_exists():
-                    other_x = child.winfo_x()
-                    other_y = child.winfo_y()
-                    other_w = child.winfo_width()
-                    other_h = child.winfo_height()
+        if self.allow_snapping:
+            # 1. Maintain lock if within unlock distance (anti-jitter)
+            if self._snap_lock_x is not None:
+                if abs(new_x - self._snap_lock_x) < UNLOCK_DIST:
+                    new_x = self._snap_lock_x
+                else:
+                    self._snap_lock_x = None
                     
-                    # Horizontal snapping (disabled if current note is collapsed)
-                    if not self._note.collapsed and self._snap_lock_x is None:
-                        # Left edge -> Other's right edge
-                        if abs(new_x - (other_x + other_w)) < SNAP_DIST:
-                            self._snap_lock_x = other_x + other_w + x_snap_padding
-                            new_x = self._snap_lock_x
-                        # Right edge -> Other's left edge
-                        elif abs((new_x + my_w) - other_x) < SNAP_DIST:
-                            self._snap_lock_x = other_x - my_w - (x_snap_padding + 1)
-                            new_x = self._snap_lock_x
-                            
-                    # Vertical Snapping
-                    if self._snap_lock_y is None:
-                        # Top edge -> Other's bottom edge
-                        if abs(new_y - (other_y + other_h)) < SNAP_DIST:
-                            self._snap_lock_y = other_y + other_h + y_snap_padding
-                            new_y = self._snap_lock_y
-                        # Bottom edge -> Other's top edge
-                        elif abs((new_y + my_h) - other_y) < SNAP_DIST:
-                            self._snap_lock_y = other_y - my_h - y_snap_padding
-                            new_y = self._snap_lock_y
+            if self._snap_lock_y is not None:
+                if abs(new_y - self._snap_lock_y) < UNLOCK_DIST:
+                    new_y = self._snap_lock_y
+                else:
+                    self._snap_lock_y = None
+                    
+            # 2. Find new snaps if not locked against other active windows
+            if self._snap_lock_x is None or self._snap_lock_y is None:
+                for child in self._window.master.winfo_children():
+                    if isinstance(child, tk.Toplevel) and child is not self._window and child.winfo_exists():
+                        other_x = child.winfo_x()
+                        other_y = child.winfo_y()
+                        other_w = child.winfo_width()
+                        other_h = child.winfo_height()
+
+                        my_left = new_x
+                        my_right = new_x + my_w
+                        my_top = new_y
+                        my_bottom = new_y + my_h
+                        other_left = other_x
+                        other_right = other_x + other_w
+                        other_top = other_y
+                        other_bottom = other_y + other_h
+
+                        vertical_close = (
+                            abs(my_top - other_top) < 20 or
+                            abs(my_bottom - other_bottom) < 20 or
+                            (my_top < other_bottom and my_bottom > other_top)
+                        )
+                        horizontal_close = (
+                            abs(my_left - other_left) < 20 or
+                            abs(my_right - other_right) < 20 or
+                            (my_left < other_right and my_right > other_left)
+                        )
+                        
+                        # Horizontal snapping (disabled if current note is collapsed)
+                        if not self._note.collapsed and self._snap_lock_x is None and vertical_close:
+                            if abs(my_left - other_right) < SNAP_DIST:
+                                self._snap_lock_x = other_right + x_snap_padding + 1
+                                new_x = self._snap_lock_x
+
+                            elif abs(my_right - other_left) < SNAP_DIST:
+                                self._snap_lock_x = other_left - my_w - x_snap_padding
+                                new_x = self._snap_lock_x
+                                
+                        # Vertical Snapping
+                        if self._snap_lock_y is None and horizontal_close:
+                            if abs(my_top - other_bottom) < SNAP_DIST:
+                                self._snap_lock_y = other_bottom + y_snap_padding
+                                new_y = self._snap_lock_y
+
+                            elif abs(my_bottom - other_top) < SNAP_DIST:
+                                self._snap_lock_y = other_top - my_h - y_snap_padding
+                                new_y = self._snap_lock_y
 
         self._window.geometry(f"+{new_x}+{new_y}")
 
