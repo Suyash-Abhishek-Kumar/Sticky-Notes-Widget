@@ -17,13 +17,13 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_DIR = os.path.dirname(__file__)
 
-_DATA_DIR = os.path.join(BASE_DIR, "data")
-_NOTES_FILE = os.path.join(_DATA_DIR, "notes.json")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+NOTES_FILE = os.path.join(DATA_DIR, "notes.json")
 
 
 def _ensure_data_dir():
     """Create the data directory if it doesn't exist yet."""
-    os.makedirs(_DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def load_notes() -> list[Note]:
@@ -33,11 +33,11 @@ def load_notes() -> list[Note]:
     """
     _ensure_data_dir()
 
-    if not os.path.exists(_NOTES_FILE):
+    if not os.path.exists(NOTES_FILE):
         return []
 
     try:
-        with open(_NOTES_FILE, "r", encoding="utf-8") as f:
+        with open(NOTES_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         if isinstance(data, list):
@@ -58,8 +58,7 @@ def save_notes(notes: list[Note]):
     ]
     """
     _ensure_data_dir()
-
     payload = [note.to_dict() for note in notes]
 
-    with open(_NOTES_FILE, "w", encoding="utf-8") as f:
+    with open(NOTES_FILE, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)

@@ -6,7 +6,6 @@ Wires together: storage (load) → Note model → NoteWindow UI → Tk event loo
 """
 
 import tkinter as tk
-
 import storage
 from note import Note
 from ui_note import NoteWindow
@@ -60,8 +59,8 @@ class NoteApp:
         """Global callback: delete a note model and destroy its window."""
         if note in self.notes:
             self.notes.remove(note)
+            
         window.destroy()
-
         self.save_all()
 
         if not self.notes:

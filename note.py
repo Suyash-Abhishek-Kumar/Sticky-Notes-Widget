@@ -5,7 +5,6 @@ Data model for a single sticky note.
 No UI logic, no file I/O — pure data representation.
 """
 
-
 class Note:
     """Represents a single sticky note's data."""
 
@@ -13,10 +12,18 @@ class Note:
     DEFAULT_X = 100
     DEFAULT_Y = 100
 
-    def __init__(self, note_id: int, text: str = None, x: int = None, y: int = None, 
-                 pinned: bool = False, bg_color: str = "#FFF8B0", 
-                 top_bar_color: str = "#F2DC7D", text_color: str = "#2B2B2B",
-                 collapsed: bool = False):
+    def __init__(
+        self, 
+        note_id: int, 
+        text: str = None, 
+        x: int = None, 
+        y: int = None, 
+        pinned: bool = False, 
+        bg_color: str = "#FFF8B0", 
+        top_bar_color: str = "#F2DC7D", 
+        text_color: str = "#2B2B2B",
+        collapsed: bool = False
+    ):
         self.id = note_id
         self.text = text if text is not None else self.DEFAULT_TEXT
         self.x = x if x is not None else self.DEFAULT_X
